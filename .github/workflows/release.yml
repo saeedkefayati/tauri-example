@@ -23,13 +23,13 @@ jobs:
       matrix:
         include:
           - platform: 'web'
-            os: 'ubuntu-latest'
+            os: 'ubuntu-22.04'
             build-command: 'pnpm run build'
             artifact-name: 'web-dist'
             artifact-path: './dist'
           
           - platform: 'linux'
-            os: 'ubuntu-latest'
+            os: 'ubuntu-22.04'
             build-command: 'pnpm tauri build --bundles appimage'
             artifact-name: 'linux-artifact'
             artifact-path: 'src-tauri/target/release/bundle/appimage/*.AppImage'
@@ -61,25 +61,20 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest' && matrix.platform == 'linux'
+      - name: Install Linux dependencies (using version 4.1)
+        if: matrix.os == 'ubuntu-22.04' && matrix.platform == 'linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libwebkitgtk-6.0-dev \
-            libjavascriptcoregtk-6.0-dev \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
             libsoup-3.0-dev \
             libappindicator3-dev \
             librsvg2-dev \
             patchelf
-        
+            
       - name: Install Dependencies
         run: pnpm install
-
-      - name: Remove Cargo.lock for Linux 🐧
-        if: matrix.platform == 'linux'
-        run: rm -f src-tauri/Cargo.lock
-        shell: bash
 
       - name: Build Command
         run: ${{ matrix.build-command }}
