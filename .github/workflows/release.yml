@@ -76,6 +76,11 @@ jobs:
       - name: Install Dependencies
         run: pnpm install
 
+      - name: Remove Cargo.lock for Linux 🐧
+        if: matrix.platform == 'linux'
+        run: rm -f src-tauri/Cargo.lock
+        shell: bash
+
       - name: Build Command
         run: ${{ matrix.build-command }}
         timeout-minutes: 30
