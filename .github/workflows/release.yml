@@ -7,15 +7,14 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest  # اجرای روی سیستم macOS
-
+    runs-on: macos-latest  # اجرای روی macOS
     strategy:
       matrix:
-        platform: [macos, windows, linux]  # پلتفرم‌های مختلف
+        platform: [macos, windows, linux, android, ios, web]  # پلتفرم‌های مختلف
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v2  # گیت‌هاب اکشن برای چک‌اوت پروژه
+        uses: actions/checkout@v2
 
       - name: Setup Rust
         uses: actions-rs/toolchain@v1
@@ -26,13 +25,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '20'  # تنظیم نسخه Node.js
+          node-version: '20' 
 
       - name: Install pnpm
-        run: npm install -g pnpm  # نصب pnpm
+        run: npm install -g pnpm
 
       - name: Install Dependencies
-        run: pnpm install  # نصب وابستگی‌های پروژه
+        run: pnpm install
 
       - name: Build Tauri App
         run: |
@@ -42,6 +41,12 @@ jobs:
             pnpm tauri build --target msix  # برای Windows
           elif [ "${{ matrix.platform }}" == "linux" ]; then
             pnpm tauri build --target app-image  # برای Linux
+          elif [ "${{ matrix.platform }}" == "android" ]; then
+            pnpm tauri build --target android  # برای Android
+          elif [ "${{ matrix.platform }}" == "ios" ]; then
+            pnpm tauri build --target ios  # برای iOS
+          elif [ "${{ matrix.platform }}" == "web" ]; then
+            pnpm tauri build --target web  # برای PWA/Web
           fi
 
       - name: Create Release
