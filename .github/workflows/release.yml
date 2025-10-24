@@ -85,8 +85,7 @@ jobs:
         with:
           name: ${{ matrix.artifact-name }}
           path: ${{ matrix.artifact-path }}
-
-  # --- Job 2: Release (بدون تغییر) ---
+          
   release:
     runs-on: ubuntu-latest
     needs: build
@@ -113,9 +112,16 @@ jobs:
       - name: Display structure of downloaded files
         run: ls -R ./artifacts
 
+      - name: Zip web artifact 📦
+        run: |
+          sudo apt-get install -y zip
+          cd ./artifacts/web-dist
+          zip -r ../web-dist.zip .
+          cd ../..
+
       - name: Create Release
         run: |
           VERSION="v$(date +'%Y%m%d%H%M%S')"
-          gh release create $VERSION ./artifacts/*/* --title "Automated Release $VERSION" --notes "Automated build of version $VERSION"
+          gh release create $VERSION ./artifacts/web-dist.zip ./artifacts/linux-artifact/* ./artifacts/macos-artifact/* ./artifacts/windows-artifact/* --title "Automated Release $VERSION" --notes "Automated build of version $VERSION"
         env:
           GH_TOKEN: ${{ github.token }}
