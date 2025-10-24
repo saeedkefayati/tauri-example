@@ -21,31 +21,34 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
+        include: # ⬇️ این قسمت اصلاح شده است
           - platform: 'web'
             os: 'ubuntu-latest'
-            build-command: 'pnpm run build'
+            build-command: 'pnpm run build' # این درست بود
             artifact-name: 'web-dist'
             artifact-path: './dist'
           
           - platform: 'linux'
             os: 'ubuntu-latest'
-            build-command: 'pnpm tauri build --target appimage'
+            # ❗️ اصلاح شد: --target به --bundles تغییر کرد
+            build-command: 'pnpm tauri build --bundles appimage'
             artifact-name: 'linux-artifact'
             artifact-path: 'src-tauri/target/release/bundle/appimage/*.AppImage'
 
           - platform: 'macos'
             os: 'macos-latest'
-            build-command: 'pnpm tauri build --target dmg'
+            # ❗️ اصلاح شد: --target به --bundles تغییر کرد
+            build-command: 'pnpm tauri build --bundles dmg'
             artifact-name: 'macos-artifact'
             artifact-path: 'src-tauri/target/release/bundle/dmg/*.dmg'
 
           - platform: 'windows'
             os: 'windows-latest'
-            build-command: 'pnpm tauri build --target msi'
+            # ❗️ اصلاح شد: --target به --bundles تغییر کرد
+            build-command: 'pnpm tauri build --bundles msi'
             artifact-name: 'windows-artifact'
             artifact-path: 'src-tauri/target/release/bundle/msi/*.msi'
-
+            
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
