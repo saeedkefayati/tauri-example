@@ -21,34 +21,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: # ⬇️ این قسمت اصلاح شده است
+        include:
           - platform: 'web'
-            os: 'ubuntu-latest'
-            build-command: 'pnpm run build' # این درست بود
+            os: 'ubuntu-22.04'
+            build-command: 'pnpm run build'
             artifact-name: 'web-dist'
             artifact-path: './dist'
           
           - platform: 'linux'
-            os: 'ubuntu-latest'
-            # ❗️ اصلاح شد: --target به --bundles تغییر کرد
+            os: 'ubuntu-22.04' 
             build-command: 'pnpm tauri build --bundles appimage'
             artifact-name: 'linux-artifact'
             artifact-path: 'src-tauri/target/release/bundle/appimage/*.AppImage'
 
           - platform: 'macos'
             os: 'macos-latest'
-            # ❗️ اصلاح شد: --target به --bundles تغییر کرد
             build-command: 'pnpm tauri build --bundles dmg'
             artifact-name: 'macos-artifact'
             artifact-path: 'src-tauri/target/release/bundle/dmg/*.dmg'
 
           - platform: 'windows'
             os: 'windows-latest'
-            # ❗️ اصلاح شد: --target به --bundles تغییر کرد
             build-command: 'pnpm tauri build --bundles msi'
             artifact-name: 'windows-artifact'
             artifact-path: 'src-tauri/target/release/bundle/msi/*.msi'
-            
+
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -64,19 +61,14 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      # --- ⬇️ اصلاح شده: نام پکیج وب‌کیت تغییر کرد
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-latest' && matrix.platform == 'linux'
+        if: matrix.os == 'ubuntu-22.04' && matrix.platform == 'linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkitgtk-6.0-dev libjavascriptcoregtk-6.0-dev libappindicator3-dev librsvg2-dev patchelf
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libjavascriptcoregtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
         
       - name: Install Dependencies
         run: pnpm install
-
-      # --- ⬇️ حذف شده: این مرحله دیگر لازم نیست
-      # - name: Install Tauri CLI
-      #   run: pnpm add -g @tauri-apps/cli
 
       - name: Build Command
         run: ${{ matrix.build-command }}
