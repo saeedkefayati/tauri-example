@@ -10,7 +10,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        platform: [macos, windows, linux, android, ios, web]  # پلتفرم‌های مختلف
+        platform: [web, macos, windows, linux, android, ios]
 
     steps:
       - name: Checkout Repository
@@ -36,20 +36,20 @@ jobs:
       - name: Build PWA (Web Platform)
         if: matrix.platform == 'web'
         run: |
-          pnpm run build  # استفاده از Vite برای ساخت PWA
+          pnpm run build 
 
       - name: Build Tauri App (Desktop Platforms)
         run: |
           if [ "${{ matrix.platform }}" == "macos" ]; then
-            pnpm tauri build --target dmg  # برای macOS
+            pnpm tauri build --target dmg
           elif [ "${{ matrix.platform }}" == "windows" ]; then
-            pnpm tauri build --target msix  # برای Windows
+            pnpm tauri build --target msix
           elif [ "${{ matrix.platform }}" == "linux" ]; then
-            pnpm tauri build --target app-image  # برای Linux
+            pnpm tauri build --target app-image
           elif [ "${{ matrix.platform }}" == "android" ]; then
-            pnpm tauri build --target android  # برای Android
+            pnpm tauri build --target android
           elif [ "${{ matrix.platform }}" == "ios" ]; then
-            pnpm tauri build --target ios  # برای iOS
+            pnpm tauri build --target ios
           fi
 
       - name: Install GitHub CLI
