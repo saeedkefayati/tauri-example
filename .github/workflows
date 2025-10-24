@@ -1,0 +1,50 @@
+name: Tauri Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-latest  # استفاده از macOS برای build
+    strategy:
+      matrix:
+        platform: [macos, windows, linux]  # پلتفرم‌هایی که می‌خواهیم خروجی بگیریم
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Setup Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install Dependencies
+        run: |
+          pnpm install
+
+      - name: Build Tauri App
+        run: |
+          if [ "${{ matrix.platform }}" == "macos" ]; then
+            pnpm tauri build --target dmg  # خروجی macOS
+          elif [ "${{ matrix.platform }}" == "windows" ]; then
+            pnpm tauri build --target msix  # خروجی ویندوز
+          elif [ "${{ matrix.platform }}" == "linux" ]; then
+            pnpm tauri build --target app-image  # خروجی لینوکس
+          fi
+
+      - name: Create Release
+        id: release
+        run: |
+          curl -sL https://github.com/github-release/github-release/releases/download/v1.3.0/github-release-linux-amd64 -o /tmp/github-release
+          chmod +x /tmp/github-release
+          /tmp/github-release -u ${{ github.repository_owner }} -r ${{ github.repository }} release create "v$(date +'%Y%m%d%H%M%S')" -d "Automated build"
+          /tmp/github-release -u ${{ github.repository_owner }} -r ${{ github.repository }} upload --file ./target/release/bundle/${{ matrix.platform }}/* "v$(date +'%Y%m%d%H%M%S')"
