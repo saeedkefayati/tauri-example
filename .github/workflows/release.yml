@@ -1,30 +1,58 @@
-name: Tauri Build and Release
+name: Tauri Build and Release (Desktop + Web)
 
 on:
   push:
     branches:
-      - main  # فقط زمانی که به main پوش می‌شود اجرا شود
+      - main
+    # برای جلوگیری از اجرای بیهوده، فقط زمانی اجرا شود که فایلی غیر از مستندات تغییر کرده
+    paths:
+      - 'src/**'
+      - 'src-tauri/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'tauri.conf.json'
+      - '.github/workflows/**'
 
-# ⬇️ قدم مهم برای حل مشکل 403
-# به توکن اتوماتیک گیت‌هاب اکشنز دسترسی «نوشتن» می‌دهیم
+# ⬇️ این بخش کلیدی مشکل 403 شما را حل می‌کند
 permissions:
   contents: write
 
 jobs:
   # --- JOB 1: ساخت تمام پلتفرم‌ها ---
   build:
-    runs-on: macos-latest # برای ساخت همه پلتفرم‌ها از مک استفاده می‌کنیم
+    # هر پلتفرم روی سیستم‌عامل اصلی خودش ساخته می‌شود
+    runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: false # اگر یک پلتفرم فیل شد، بقیه ادامه دهند
+      fail-fast: false
       matrix:
-        platform: [web, macos, windows, linux]
-        # اندروید و iOS نیاز به تنظیمات بسیار پیچیده‌تر و ساین کردن دارند
-        # فعلا روی دسکتاپ و وب تمرکز می‌کنیم
-        # platform: [web, macos, windows, linux, android, ios]
+        include: # ⬇️ تعریف پلتفرم‌ها و سیستم‌عامل‌های مورد نیازشان
+          - platform: 'web'
+            os: 'ubuntu-latest'
+            build-command: 'pnpm run build'
+            artifact-name: 'web-dist'
+            artifact-path: './dist'
+          
+          - platform: 'linux'
+            os: 'ubuntu-latest'
+            build-command: 'pnpm tauri build --target appimage'
+            artifact-name: 'linux-artifact'
+            artifact-path: 'src-tauri/target/release/bundle/appimage/*.AppImage'
+
+          - platform: 'macos'
+            os: 'macos-latest'
+            build-command: 'pnpm tauri build --target dmg'
+            artifact-name: 'macos-artifact'
+            artifact-path: 'src-tauri/target/release/bundle/dmg/*.dmg'
+
+          - platform: 'windows'
+            os: 'windows-latest'
+            build-command: 'pnpm tauri build --target msi'
+            artifact-name: 'windows-artifact'
+            artifact-path: 'src-tauri/target/release/bundle/msi/*.msi'
 
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4 # از نسخه جدیدتر استفاده کنید
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -37,74 +65,65 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
+      # --- ⬇️ نصب پیش‌نیازهای لینوکس (فقط روی رانر لینوکس اجرا می‌شود)
+      - name: Install Linux dependencies
+        if: matrix.os == 'ubuntu-latest' && matrix.platform == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libappindicator3-dev librsvg2-dev patchelf
+        
       - name: Install Dependencies
         run: pnpm install
 
       - name: Install Tauri CLI
         run: pnpm add -g @tauri-apps/cli
 
-      - name: Build Web (PWA)
-        if: matrix.platform == 'web'
-        run: pnpm run build
-      
-      - name: Build Tauri App (Desktop)
-        # این دستور تمام دسکتاپ‌ها را می‌سازد
-        # برای سادگی، می‌توانیم همه را روی یک رانر مک بسازیم
-        if: matrix.platform != 'web'
-        run: pnpm tauri build --target ${{ matrix.platform }}
+      - name: Build Command
+        run: ${{ matrix.build-command }}
+        timeout-minutes: 30
 
-      # --- ⬇️ بخش کلیدی: آپلود خروجی ---
-      - name: Upload Web Artifact
-        if: matrix.platform == 'web'
+      # --- ⬇️ آپلود خروجی (Artifact) مختص هر پلتفرم
+      - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: web-dist # اسم آرتیفکت
-          path: ./dist # مسیری که pnpm run build خروجی می‌دهد
-
-      - name: Upload Desktop Artifacts
-        if: matrix.platform != 'web'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.platform }}-build # اسمی مثل macos-build, windows-build
-          # مسیر خروجی‌های tauri build
-          # ممکن است نیاز به تنظیم دقیق‌تر مسیر داشته باشید
-          path: |
-            src-tauri/target/release/bundle/
-            !src-tauri/target/release/bundle/appimage/
+          name: ${{ matrix.artifact-name }}
+          path: ${{ matrix.artifact-path }}
 
   # --- JOB 2: ایجاد Release نهایی ---
   release:
     runs-on: ubuntu-latest
-    needs: build # ⬇️ مهم: منتظر می‌ماند تا تمام build ها تمام شوند
-    if: github.ref == 'refs/heads/main' # فقط روی main اجرا شود
+    needs: build # ⬇️ منتظر می‌ماند تا تمام build ها (۴ پلتفرم) تمام شوند
+    if: github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
       - name: Install GitHub CLI
-        run: sudo apt-get install gh -y
+        run: |
+          type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
+          curl -sSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
+          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
+          && sudo apt update \
+          && sudo apt install gh -y
 
-      # --- ⬇️ بخش کلیدی: دانلود همه خروجی‌ها ---
+      # --- ⬇️ دانلود تمام آرتیفکت‌ها
       - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          # همه‌ی آرتیفکت‌ها را در پوشه dist دانلود کن
-          path: ./dist
-          
-      - name: Display structure of downloaded files
-        run: ls -R ./dist
+          # آرتیفکت‌ها در پوشه‌هایی به نام خودشان دانلود می‌شوند
+          path: ./artifacts
 
-      # --- ⬇️ بخش کلیدی: ساخت Release واحد ---
+      - name: Display structure of downloaded files
+        run: ls -R ./artifacts
+
+      # --- ⬇️ ساخت Release واحد و ضمیمه کردن همه‌ی فایل‌ها
       - name: Create Release
         run: |
           VERSION="v$(date +'%Y%m%d%H%M%S')"
-          # تمام فایل‌های داخل تمام پوشه‌های دانلود شده را به Release ضمیمه کن
-          gh release create $VERSION ./dist/*/* --title "Automated Release $VERSION" --notes "Automated build of version $VERSION"
+          # فایل‌ها را از داخل پوشه‌های دانلود شده برمی‌داریم
+          gh release create $VERSION ./artifacts/*/* --title "Automated Release $VERSION" --notes "Automated build of version $VERSION"
         env:
-          GH_TOKEN: ${{ github.token }} # ❗️ از همین توکن اتوماتیک استفاده می‌کنیم
+          # ❗️ از همان توکن اتوماتیک استفاده می‌کنیم
+          GH_TOKEN: ${{ github.token }}
