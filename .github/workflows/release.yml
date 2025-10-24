@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest  # اجرای روی macOS
+    runs-on: macos-latest
     strategy:
       matrix:
         platform: [macos, windows, linux, android, ios, web]  # پلتفرم‌های مختلف
@@ -33,7 +33,7 @@ jobs:
       - name: Install Dependencies
         run: pnpm install
 
-      - name: Build Tauri App
+      - name: Build Tauri App (Desktop Platforms)
         run: |
           if [ "${{ matrix.platform }}" == "macos" ]; then
             pnpm tauri build --target dmg  # برای macOS
@@ -45,9 +45,12 @@ jobs:
             pnpm tauri build --target android  # برای Android
           elif [ "${{ matrix.platform }}" == "ios" ]; then
             pnpm tauri build --target ios  # برای iOS
-          elif [ "${{ matrix.platform }}" == "web" ]; then
-            pnpm tauri build --target web  # برای PWA/Web
           fi
+
+      - name: Build PWA (Web Platform)
+        if: matrix.platform == 'web'
+        run: |
+          pnpm run build  # استفاده از Vite برای ساخت PWA
 
       - name: Create Release
         id: release
