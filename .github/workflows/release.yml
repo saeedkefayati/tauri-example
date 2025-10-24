@@ -33,6 +33,11 @@ jobs:
       - name: Install Dependencies
         run: pnpm install
 
+      - name: Build PWA (Web Platform)
+        if: matrix.platform == 'web'
+        run: |
+          pnpm run build  # استفاده از Vite برای ساخت PWA
+
       - name: Build Tauri App (Desktop Platforms)
         run: |
           if [ "${{ matrix.platform }}" == "macos" ]; then
@@ -47,10 +52,6 @@ jobs:
             pnpm tauri build --target ios  # برای iOS
           fi
 
-      - name: Build PWA (Web Platform)
-        if: matrix.platform == 'web'
-        run: |
-          pnpm run build  # استفاده از Vite برای ساخت PWA
 
       - name: Create Release
         id: release
