@@ -54,12 +54,13 @@ jobs:
           fi
         timeout-minutes: 30
 
-      - name: Install GitHub CLI
+      - name: Install GitHub CLI (via Homebrew)
         run: |
-          curl -s https://cli.github.com/install.sh | bash
+          brew install gh
 
       - name: Create Release with GitHub CLI
         run: |
           VERSION="v$(date +'%Y%m%d%H%M%S')"
           gh release create $VERSION ./dist/* --title "Automated Release $VERSION" --notes "Automated build of version $VERSION"
 
+          
