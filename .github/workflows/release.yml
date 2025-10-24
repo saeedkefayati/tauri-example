@@ -25,7 +25,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '20' 
+          node-version: '20'
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -52,11 +52,12 @@ jobs:
             pnpm tauri build --target ios  # برای iOS
           fi
 
-
-      - name: Create Release
-        id: release
+      - name: Install GitHub CLI
         run: |
-          curl -sL https://github.com/github-release/github-release/releases/download/v1.3.0/github-release-linux-amd64 -o /tmp/github-release
-          chmod +x /tmp/github-release
-          /tmp/github-release -u ${{ github.repository_owner }} -r ${{ github.repository }} release create "v$(date +'%Y%m%d%H%M%S')" -d "Automated build"
-          /tmp/github-release -u ${{ github.repository_owner }} -r ${{ github.repository }} upload --file ./target/release/bundle/${{ matrix.platform }}/* "v$(date +'%Y%m%d%H%M%S')"
+          curl -s https://cli.github.com/install.sh | bash
+
+      - name: Create Release with GitHub CLI
+        run: |
+          VERSION="v$(date +'%Y%m%d%H%M%S')"
+          gh release create $VERSION ./dist/* --title "Automated Release $VERSION" --notes "Automated build of version $VERSION"
+
