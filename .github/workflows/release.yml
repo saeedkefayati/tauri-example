@@ -63,4 +63,4 @@ jobs:
           VERSION="v$(date +'%Y%m%d%H%M%S')"
           gh release create $VERSION ./dist/* --title "Automated Release $VERSION" --notes "Automated build of version $VERSION"
         env:
-          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
