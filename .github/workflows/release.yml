@@ -36,7 +36,8 @@ jobs:
       - name: Build PWA (Web Platform)
         if: matrix.platform == 'web'
         run: |
-          pnpm run build 
+          pnpm run build
+        timeout-minutes: 10
 
       - name: Build Tauri App (Desktop Platforms)
         run: |
@@ -51,6 +52,7 @@ jobs:
           elif [ "${{ matrix.platform }}" == "ios" ]; then
             pnpm tauri build --target ios
           fi
+        timeout-minutes: 30
 
       - name: Install GitHub CLI
         run: |
