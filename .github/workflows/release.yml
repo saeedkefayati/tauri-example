@@ -17,10 +17,10 @@ jobs:
       matrix:
         include:
           - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin'
+            args: '--target aarch64-apple-darwin' 
             
           - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin'
+            args: '--target x86_64-apple-darwin' 
             
           - platform: 'ubuntu-22.04'
             args: ''
@@ -32,16 +32,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: setup node
+      - uses: pnpm/action-setup@v4
+        name: Install pnpm
+        with:
+          version: 10
+          run_install: false
+
+      - name: Install Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'pnpm'
 
-      - name: install pnpm
-        uses: pnpm/action-setup@v4 
-        with:
-          version: 9
+      - name: Install dependencies
+        run: pnpm install
+
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -61,7 +66,7 @@ jobs:
             patchelf
 
       - name: install frontend dependencies
-        run: pnpm install 
+        run: pnpm install
 
       - uses: tauri-apps/tauri-action@v0
         env:
