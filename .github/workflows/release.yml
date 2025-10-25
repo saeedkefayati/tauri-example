@@ -1,68 +1,57 @@
-name: Tauri Build and Release (Desktop + Web)
+name: 'Tauri Build and Release'
 
 on:
   push:
     branches:
-      - main
-    paths:
-      - 'src/**'
-      - 'src-tauri/**'
-      - 'package.json'
-      - 'pnpm-lock.yaml'
-      - 'tauri.conf.json'
-      - '.github/workflows/**'
+      - main # یا هر برنچی که برای ریلیز استفاده می‌کنید
 
 permissions:
-  contents: write
+  contents: write # ❗️ این همچنان برای ایجاد ریلیز ضروری است
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+  publish-tauri:
+    permissions:
+      contents: write
     strategy:
       fail-fast: false
       matrix:
         include:
-          - platform: 'web'
-            os: 'ubuntu-22.04'
-            build-command: 'pnpm run build'
-            artifact-name: 'web-dist'
-            artifact-path: './dist'
-          
-          - platform: 'linux'
-            os: 'ubuntu-22.04'
-            build-command: 'pnpm tauri build --bundles appimage'
-            artifact-name: 'linux-artifact'
-            artifact-path: 'src-tauri/target/release/bundle/appimage/*.AppImage'
+          # --- macOS (دو بیلد جداگانه) ---
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin' # اپل سیلیکون
+            
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin' # اینتل
+            
+          # --- Linux (x64) ---
+          - platform: 'ubuntu-22.04'
+            args: '' # بدون آرگومان، از معماری پیش‌فرض رانر (x64) استفاده می‌کند
 
-          - platform: 'macos'
-            os: 'macos-latest'
-            build-command: 'pnpm tauri build --bundles dmg'
-            artifact-name: 'macos-artifact'
-            artifact-path: 'src-tauri/target/release/bundle/dmg/*.dmg'
+          # --- Windows (x64) ---
+          - platform: 'windows-latest'
+            args: '' # بدون آرگومان، از معماری پیش‌فرض رانر (x64) استفاده می‌کند
 
-          - platform: 'windows'
-            os: 'windows-latest'
-            build-command: 'pnpm tauri build --bundles msi'
-            artifact-name: 'windows-artifact'
-            artifact-path: 'src-tauri/target/release/bundle/msi/*.msi'
-
+    runs-on: ${{ matrix.platform }}
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: setup node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: 20
+          cache: 'pnpm' # ❗️ کش pnpm را هم فعال می‌کند
 
-      - name: Install pnpm
+      - name: install pnpm
         run: npm install -g pnpm
 
-      - name: Install Rust
+      - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
+        with:
+          # ❗️ این بخش هوشمندانه است: فقط روی رانرهای مک، اهداف (targets) کامپایل متقاطع را نصب می‌کند
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
-      - name: Install Linux dependencies (using version 4.1)
-        if: matrix.os == 'ubuntu-22.04' && matrix.platform == 'linux'
+      - name: install dependencies (ubuntu only)
+        if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -72,56 +61,21 @@ jobs:
             libappindicator3-dev \
             librsvg2-dev \
             patchelf
-            
-      - name: Install Dependencies
+
+      - name: install frontend dependencies
         run: pnpm install
 
-      - name: Build Command
-        run: ${{ matrix.build-command }}
-        timeout-minutes: 30
-
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.artifact-name }}
-          path: ${{ matrix.artifact-path }}
-          
-  release:
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Install GitHub CLI
-        run: |
-          type -p curl >/dev/null || (sudo apt update && sudo apt install curl -y)
-          curl -sSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
-          && sudo chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
-          && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
-          && sudo apt update \
-          && sudo apt install gh -y
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: ./artifacts
-
-      - name: Display structure of downloaded files
-        run: ls -R ./artifacts
-
-      - name: Zip web artifact 📦
-        run: |
-          sudo apt-get install -y zip
-          cd ./artifacts/web-dist
-          zip -r ../web-dist.zip .
-          cd ../..
-
-      - name: Create Release
-        run: |
-          VERSION="v$(date +'%Y%m%d%H%M%S')"
-          gh release create $VERSION ./artifacts/web-dist.zip ./artifacts/linux-artifact/* ./artifacts/macos-artifact/* ./artifacts/windows-artifact/* --title "Automated Release $VERSION" --notes "Automated build of version $VERSION"
+      # --- ⬇️ ⬇️ ⬇️ بخش جادویی اینجاست ⬇️ ⬇️ ⬇️ ---
+      # این اکشن به صورت خودکار 'pnpm tauri build' را اجرا می‌کند
+      # و سپس فایل‌های خروجی را به یک ریلیز گیت‌هاب جدید ضمیمه می‌کند
+      - uses: tauri-apps/tauri-action@v0
         env:
-          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # tagName از 'app-v' + نسخه اپ در tauri.conf.json استفاده می‌کند
+          tagName: app-v__VERSION__
+          releaseName: 'App v__VERSION__'
+          releaseBody: 'See the assets to download this version and install.'
+          releaseDraft: false # ❗️ اگر می‌خواهید ریلیز اتوماتیک منتشر شود، این را false بگذارید
+          prerelease: false
+          args: ${{ matrix.args }} # ❗️ آرگومان‌های مخصوص هر پلتفرم را پاس می‌دهد
