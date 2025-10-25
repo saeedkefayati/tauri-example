@@ -32,12 +32,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: setup node and pnpm
+      - name: setup node
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          pnpm-version: 9
           cache: 'pnpm'
+
+      - name: install pnpm
+        uses: pnpm/action-setup@v4 
+        with:
+          version: 9
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
@@ -57,7 +61,7 @@ jobs:
             patchelf
 
       - name: install frontend dependencies
-        run: pnpm install
+        run: pnpm install 
 
       - uses: tauri-apps/tauri-action@v0
         env:
