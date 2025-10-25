@@ -3,10 +3,10 @@ name: 'Tauri Build and Release'
 on:
   push:
     branches:
-      - main # یا هر برنچی که برای ریلیز استفاده می‌کنید
+      - main
 
 permissions:
-  contents: write # ❗️ این همچنان برای ایجاد ریلیز ضروری است
+  contents: write
 
 jobs:
   publish-tauri:
@@ -16,38 +16,32 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # --- macOS (دو بیلد جداگانه) ---
           - platform: 'macos-latest'
-            args: '--target aarch64-apple-darwin' # اپل سیلیکون
+            args: '--target aarch64-apple-darwin'
             
           - platform: 'macos-latest'
-            args: '--target x86_64-apple-darwin' # اینتل
+            args: '--target x86_64-apple-darwin'
             
-          # --- Linux (x64) ---
           - platform: 'ubuntu-22.04'
-            args: '' # بدون آرگومان، از معماری پیش‌فرض رانر (x64) استفاده می‌کند
+            args: ''
 
-          # --- Windows (x64) ---
           - platform: 'windows-latest'
-            args: '' # بدون آرگومان، از معماری پیش‌فرض رانر (x64) استفاده می‌کند
+            args: ''
 
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: setup node
+      - name: setup node and pnpm
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: 'pnpm' # ❗️ کش pnpm را هم فعال می‌کند
-
-      - name: install pnpm
-        run: npm install -g pnpm
+          pnpm-version: 9
+          cache: 'pnpm'
 
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          # ❗️ این بخش هوشمندانه است: فقط روی رانرهای مک، اهداف (targets) کامپایل متقاطع را نصب می‌کند
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: install dependencies (ubuntu only)
@@ -65,17 +59,13 @@ jobs:
       - name: install frontend dependencies
         run: pnpm install
 
-      # --- ⬇️ ⬇️ ⬇️ بخش جادویی اینجاست ⬇️ ⬇️ ⬇️ ---
-      # این اکشن به صورت خودکار 'pnpm tauri build' را اجرا می‌کند
-      # و سپس فایل‌های خروجی را به یک ریلیز گیت‌هاب جدید ضمیمه می‌کند
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # tagName از 'app-v' + نسخه اپ در tauri.conf.json استفاده می‌کند
           tagName: app-v__VERSION__
           releaseName: 'App v__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: false # ❗️ اگر می‌خواهید ریلیز اتوماتیک منتشر شود، این را false بگذارید
+          releaseDraft: false
           prerelease: false
-          args: ${{ matrix.args }} # ❗️ آرگومان‌های مخصوص هر پلتفرم را پاس می‌دهد
+          args: ${{ matrix.args }}
